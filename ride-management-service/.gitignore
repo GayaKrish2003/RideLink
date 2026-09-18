@@ -1,0 +1,31 @@
+# Compiled output
+target/
+*.class
+
+# Log files
+*.log
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+*.iws
+.classpath
+.project
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment / secrets - never commit these
+.env
+.env.local
+
+# Maven wrapper (optional - keep if your team commits the wrapper, remove this line if so)
+# .mvn/
+# mvnw
+# mvnw.cmd
+
+# Spring Boot
+HELP.md
