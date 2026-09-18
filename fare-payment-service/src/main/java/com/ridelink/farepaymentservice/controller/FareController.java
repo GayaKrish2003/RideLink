@@ -8,9 +8,11 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 @RestController
 @RequestMapping("/api/fares")
+
 public class FareController {
 
     private final FareService fareService;
@@ -19,6 +21,7 @@ public class FareController {
         this.fareService = fareService;
     }
 
+    @Operation(summary = "Estimate a fare", description = "Calculates an estimated fare based on pickup, destination, and distance using the formula: base fare + (distance × rate).")
     @PostMapping("/estimate")
     public ResponseEntity<FareEstimateResponse> estimateFare(@Valid @RequestBody FareEstimateRequest request) {
         FareEstimate estimate = fareService.estimateFare(
