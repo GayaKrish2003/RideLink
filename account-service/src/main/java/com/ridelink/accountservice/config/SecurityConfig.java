@@ -12,7 +12,7 @@ public class SecurityConfig {
     // TEMPORARY: this permits ALL requests without authentication so we
     // can test JWT generation before real login/register endpoints exist.
     // Must be replaced with proper role-based rules (PASSENGER / DRIVER / ADMIN)
-    // once /register and /login are built.
+    // once /login is built.
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -20,8 +20,16 @@ public class SecurityConfig {
                 // that uses JWTs instead of session cookies.
                 .csrf(csrf -> csrf.disable())
 
-                // Allow every request through without authentication (temporary).
                 .authorizeHttpRequests(auth -> auth
+                        // Always allow Swagger's own pages through, even after
+                        // we lock down real endpoints later with role-based rules.
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**"
+                        ).permitAll()
+
+                        // TEMPORARY: still permit-all everywhere else for now,
+                        // until /login exists and we add real role-based rules.
                         .anyRequest().permitAll()
                 );
 
