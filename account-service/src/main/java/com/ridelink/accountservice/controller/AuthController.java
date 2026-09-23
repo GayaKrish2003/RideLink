@@ -72,6 +72,20 @@ public class AuthController {
         ProfileResponse response = authService.updateProfile(token, request);
         return ResponseEntity.ok(response);
     }
+    // PUT /api/auth/deactivate
+    // Lets a user deactivate their own account. No request body needed —
+    // the token identifies who's deactivating themselves.
+    @PutMapping("/deactivate")
+    public ResponseEntity<Void> deactivateAccount(
+            @RequestHeader("Authorization") String authHeader) {
+
+        String token = extractToken(authHeader);
+        authService.deactivateAccount(token);
+
+        // 204 No Content is the correct status for "action succeeded,
+        // nothing to return" — there's no updated resource to send back.
+        return ResponseEntity.noContent().build();
+    }
 
     // Helper: the Authorization header arrives as "Bearer <token>" —
     // this strips the "Bearer " prefix to get just the raw token string.

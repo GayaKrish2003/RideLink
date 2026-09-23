@@ -138,4 +138,18 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired token");
         }
     }
+
+    // Deactivates the calling user's own account. Once DEACTIVATED,
+    // login() already rejects it (see the status check in login()),
+    // so this immediately locks the account out of future logins.
+    public void deactivateAccount(String token) {
+        UUID userId = getUserIdFromToken(token);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found"));
+
+        user.setStatus(User.Status.DEACTIVATED);
+        userRepository.save(user);
+    }
 }
