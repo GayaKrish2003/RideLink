@@ -47,7 +47,7 @@ public class Vehicle {
     private Integer manufactureYear;
 
     @NotNull(message = "Driver is required")
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "driver_id", nullable = false, unique = true)
     private Driver driver;
 
