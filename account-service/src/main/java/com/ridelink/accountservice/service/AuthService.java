@@ -11,6 +11,10 @@ import org.springframework.http.HttpStatus;
 import com.ridelink.accountservice.dto.LoginRequest;
 import com.ridelink.accountservice.dto.LoginResponse;
 import com.ridelink.accountservice.security.JwtUtil;
+import com.ridelink.accountservice.dto.ProfileResponse;
+import com.ridelink.accountservice.dto.UpdateProfileRequest;
+import io.jsonwebtoken.Claims;
+import java.util.UUID;
 
 @Service
 public class AuthService {
@@ -92,5 +96,46 @@ public class AuthService {
                 .name(user.getName())
                 .role(user.getRole().name())
                 .build();
+    }
+
+    // Extracts the calling user's ID from their JWT and returns their profile.
+    // The token itself proves identity — no separate password check needed,
+    // since only someone who successfully logged in could have a valid token.
+    public ProfileResponse getProfile(String token) {
+        UUID userId = getUserIdFromToken(token);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found"));
+
+        return ProfileResponse.fromUser(user);
+    }
+
+    // Updates the calling user's own profile (currently just their name).
+    public ProfileResponse updateProfile(String token, UpdateProfileRequest request) {
+        UUID userId = getUserIdFromToken(token);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found"));
+
+        user.setName(request.getName());
+        User savedUser = userRepository.save(user);
+
+        return ProfileResponse.fromUser(savedUser);
+    }
+
+    // Shared helper: pulls the userId claim out of a validated JWT.
+    // Used by both getProfile and updateProfile so the extraction logic
+    // only lives in one place.
+    private UUID getUserIdFromToken(String token) {
+        try {
+            Claims claims = jwtUtil.extractClaims(token);
+            String userId = claims.get("userId", String.class);
+            return UUID.fromString(userId);
+        } catch (Exception e) {
+            // Covers expired tokens, malformed tokens, invalid signatures, etc.
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired token");
+        }
     }
 }

@@ -4,6 +4,9 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jws;
+
 
 import javax.crypto.SecretKey;
 import java.util.Date;
@@ -34,5 +37,16 @@ public class JwtUtil {
                 .expiration(expiry)
                 .signWith(getSigningKey())
                 .compact();
+    }
+    // Parses and validates a JWT, returning its claims (userId, role, etc.).
+    // Throws an exception automatically if the token is expired, malformed,
+    // or has an invalid signature — jjwt handles that verification internally.
+    public Claims extractClaims(String token) {
+        Jws<Claims> jws = Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token);
+
+        return jws.getPayload();
     }
 }
