@@ -4,13 +4,17 @@ import com.ridelink.accountservice.dto.RegisterRequest;
 import com.ridelink.accountservice.dto.RegisterResponse;
 import com.ridelink.accountservice.model.User;
 import com.ridelink.accountservice.repository.UserRepository;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 import com.ridelink.accountservice.dto.LoginRequest;
 import com.ridelink.accountservice.dto.LoginResponse;
 import com.ridelink.accountservice.security.JwtUtil;
+import com.ridelink.accountservice.dto.ProfileResponse;
+import com.ridelink.accountservice.dto.UpdateProfileRequest;
+import io.jsonwebtoken.Claims;
+import java.util.UUID;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Service
 public class AuthService {
@@ -21,14 +25,14 @@ public class AuthService {
     // BCryptPasswordEncoder handles password hashing.
     // Each call to .encode() automatically generates a unique salt,
     // so two users with the same password get different hashes.
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final PasswordEncoder passwordEncoder;
 
     // Spring injects UserRepository automatically via constructor.(also accept JwtUtil)
-    public AuthService(UserRepository userRepository, JwtUtil jwtUtil) {
+    public AuthService(UserRepository userRepository, JwtUtil jwtUtil, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
+        this.passwordEncoder = passwordEncoder;
     }
-
     public RegisterResponse register(RegisterRequest request) {
 
         // Prevent public self-registration as ADMIN — admin accounts should
@@ -92,5 +96,60 @@ public class AuthService {
                 .name(user.getName())
                 .role(user.getRole().name())
                 .build();
+    }
+
+    // Extracts the calling user's ID from their JWT and returns their profile.
+    // The token itself proves identity — no separate password check needed,
+    // since only someone who successfully logged in could have a valid token.
+    public ProfileResponse getProfile(String token) {
+        UUID userId = getUserIdFromToken(token);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found"));
+
+        return ProfileResponse.fromUser(user);
+    }
+
+    // Updates the calling user's own profile (currently just their name).
+    public ProfileResponse updateProfile(String token, UpdateProfileRequest request) {
+        UUID userId = getUserIdFromToken(token);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found"));
+
+        user.setName(request.getName());
+        User savedUser = userRepository.save(user);
+
+        return ProfileResponse.fromUser(savedUser);
+    }
+
+    // Shared helper: pulls the userId claim out of a validated JWT.
+    // Used by both getProfile and updateProfile so the extraction logic
+    // only lives in one place.
+    private UUID getUserIdFromToken(String token) {
+        try {
+            Claims claims = jwtUtil.extractClaims(token);
+            String userId = claims.get("userId", String.class);
+            return UUID.fromString(userId);
+        } catch (Exception e) {
+            // Covers expired tokens, malformed tokens, invalid signatures, etc.
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired token");
+        }
+    }
+
+    // Deactivates the calling user's own account. Once DEACTIVATED,
+    // login() already rejects it (see the status check in login()),
+    // so this immediately locks the account out of future logins.
+    public void deactivateAccount(String token) {
+        UUID userId = getUserIdFromToken(token);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found"));
+
+        user.setStatus(User.Status.DEACTIVATED);
+        userRepository.save(user);
     }
 }
