@@ -4,7 +4,6 @@ import com.ridelink.accountservice.dto.RegisterRequest;
 import com.ridelink.accountservice.dto.RegisterResponse;
 import com.ridelink.accountservice.model.User;
 import com.ridelink.accountservice.repository.UserRepository;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
@@ -15,6 +14,7 @@ import com.ridelink.accountservice.dto.ProfileResponse;
 import com.ridelink.accountservice.dto.UpdateProfileRequest;
 import io.jsonwebtoken.Claims;
 import java.util.UUID;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Service
 public class AuthService {
@@ -25,14 +25,14 @@ public class AuthService {
     // BCryptPasswordEncoder handles password hashing.
     // Each call to .encode() automatically generates a unique salt,
     // so two users with the same password get different hashes.
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final PasswordEncoder passwordEncoder;
 
     // Spring injects UserRepository automatically via constructor.(also accept JwtUtil)
-    public AuthService(UserRepository userRepository, JwtUtil jwtUtil) {
+    public AuthService(UserRepository userRepository, JwtUtil jwtUtil, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
+        this.passwordEncoder = passwordEncoder;
     }
-
     public RegisterResponse register(RegisterRequest request) {
 
         // Prevent public self-registration as ADMIN — admin accounts should
