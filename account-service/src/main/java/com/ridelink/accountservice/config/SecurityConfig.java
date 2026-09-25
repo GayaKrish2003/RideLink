@@ -1,37 +1,67 @@
 package com.ridelink.accountservice.config;
 
+import com.ridelink.accountservice.security.JwtAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 public class SecurityConfig {
 
-    // Defines how Spring Security handles incoming HTTP requests.
-    // TEMPORARY: this permits ALL requests without authentication so we
-    // can test JWT generation before real login/register endpoints exist.
-    // Must be replaced with proper role-based rules (PASSENGER / DRIVER / ADMIN)
-    // once /login is built.
+    private final JwtAuthFilter jwtAuthFilter;
+
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+        this.jwtAuthFilter = jwtAuthFilter;
+    }
+
+    // Expose BCryptPasswordEncoder as a proper Spring Bean, so it can be
+    // injected into AuthService instead of manually instantiated there.
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // Disable CSRF protection — not needed for a stateless REST API
-                // that uses JWTs instead of session cookies.
                 .csrf(csrf -> csrf.disable())
 
+                // Explicitly disable Spring's default login form and basic auth —
+                // we authenticate purely via JWT, not these mechanisms.
+                .formLogin(formLogin -> formLogin.disable())
+                .httpBasic(httpBasic -> httpBasic.disable())
+
+                // Stateless — we use JWTs, not server-side sessions.
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
                 .authorizeHttpRequests(auth -> auth
-                        // Always allow Swagger's own pages through, even after
-                        // we lock down real endpoints later with role-based rules.
+                        // Public endpoints — no token needed
                         .requestMatchers(
+                                "/api/auth/register",
+                                "/api/auth/login",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
                         ).permitAll()
 
-                        // TEMPORARY: still permit-all everywhere else for now,
-                        // until /login exists and we add real role-based rules.
-                        .anyRequest().permitAll()
-                );
+                        // Profile and deactivation are for any authenticated user —
+                        // PASSENGER, DRIVER, or ADMIN can all view/update their own
+                        // profile and deactivate their own account.
+                        .requestMatchers("/api/auth/profile", "/api/auth/deactivate")
+                        .hasAnyRole("PASSENGER", "DRIVER", "ADMIN")
+
+                        // Everything else requires authentication at minimum
+                        // (a safe default for any future endpoint added later).
+                        .anyRequest().authenticated()
+                )
+
+                // Run our JWT filter before Spring's default login filter
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
