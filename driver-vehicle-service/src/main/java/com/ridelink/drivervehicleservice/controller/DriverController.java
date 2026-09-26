@@ -59,7 +59,13 @@ public class DriverController {
         return ResponseEntity.ok(
                 driverService.updateAvailability(id, available));
     }
+    @GetMapping("/eligible")
+    public ResponseEntity<List<Driver>> getEligibleDrivers(
+            @RequestParam(required = false) String serviceArea) {
 
+        return ResponseEntity.ok(
+                driverService.getEligibleDrivers(serviceArea));
+    }
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteDriver(
             @PathVariable Long id) {

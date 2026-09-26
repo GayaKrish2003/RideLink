@@ -69,6 +69,14 @@ public class DriverService {
         driver.setAvailable(available);
         return driverRepository.save(driver);
     }
+    public List<Driver> getEligibleDrivers(String serviceArea) {
+        if (serviceArea == null || serviceArea.isBlank()) {
+            return driverRepository.findByAvailableTrue();
+        }
+
+        return driverRepository
+                .findByAvailableTrueAndServiceAreaIgnoreCase(serviceArea.trim());
+    }
 
     public void deleteDriver(Long id) {
         Driver driver = getDriverById(id);
