@@ -164,4 +164,41 @@ class DriverServiceTest {
 
         verify(driverRepository).delete(driver);
     }
+    @Test
+    void getEligibleDrivers_withoutServiceArea_returnsAllAvailableDrivers() {
+
+        Driver driver = mock(Driver.class);
+
+        when(driverRepository.findByAvailableTrue())
+                .thenReturn(List.of(driver));
+
+        List<Driver> result = driverService.getEligibleDrivers(null);
+
+        assertEquals(1, result.size());
+        assertSame(driver, result.get(0));
+
+        verify(driverRepository).findByAvailableTrue();
+        verify(driverRepository, never())
+                .findByAvailableTrueAndServiceAreaIgnoreCase(anyString());
+    }
+
+    @Test
+    void getEligibleDrivers_withServiceArea_returnsAvailableDriversInArea() {
+
+        Driver driver = mock(Driver.class);
+
+        when(driverRepository
+                .findByAvailableTrueAndServiceAreaIgnoreCase("Colombo"))
+                .thenReturn(List.of(driver));
+
+        List<Driver> result =
+                driverService.getEligibleDrivers(" Colombo ");
+
+        assertEquals(1, result.size());
+        assertSame(driver, result.get(0));
+
+        verify(driverRepository)
+                .findByAvailableTrueAndServiceAreaIgnoreCase("Colombo");
+        verify(driverRepository, never()).findByAvailableTrue();
+    }
 }
